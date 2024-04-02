@@ -18,3 +18,4 @@ typing_extensions==4.10.0
 Werkzeug==2.0.3
 WTForms==3.1.2
 zipp==3.18.1
+Flask-Migrate==2.5.2
