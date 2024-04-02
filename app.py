@@ -8,6 +8,7 @@ import babel
 from flask import Flask, render_template, request, Response, flash, redirect, url_for
 from flask_moment import Moment
 from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
 import logging
 from logging import Formatter, FileHandler
 from flask_wtf import Form
@@ -20,6 +21,7 @@ app = Flask(__name__)
 moment = Moment(app)
 app.config.from_object('config')
 db = SQLAlchemy(app)
+migrate = Migrate(app, db)
 
 # TODO: connect to a local postgresql database
 
@@ -29,6 +31,17 @@ db = SQLAlchemy(app)
 # - We must make creation for artist, shows, and venues via form, so use M2M relationship between Show and Artist to increase storing performance
 # - Show -(n)-> Venues -(n)-> Artist 
 #----#
+
+## M2M relations for Show - Venue and Show - Artist
+shows_venues = db.Table('show_venues',
+						db.Column('show_id', db.Integer, db.ForeignKey('Show.id'), primary_key=True),
+						db.Column('venue_id', db.Integer, db.ForeignKey('Venue.id'), primary_key=True)
+						)
+
+shows_artists = db.Table('show_artists',
+						db.Column('show_id', db.Integer, db.ForeignKey('Show.id'), primary_key=True),
+						db.Column('artist_id', db.Integer, db.ForeignKey('Artist.id'), primary_key=True)
+						)
 
 #----------------------------------------------------------------------------#
 # Models.
@@ -49,7 +62,9 @@ class Venue(db.Model):
 	facebook_link = db.Column(db.String(120))
 	seeking_talent = db.Column(db.Boolean, nullable = False, default = False)
 	seeking_description = db.Column(db.String(120))
-	# O2M relationship venue - show configuration
+
+	def __repr__(self):
+		return f"<Venue id={self.id} name={self.name} city={self.city} state={self.city}>\n"	
 
 # TODO: implement any missing fields, as a database migration using Flask-Migrate
 class Artist(db.Model):
@@ -67,28 +82,23 @@ class Artist(db.Model):
 
 # Add model for genres cuz it can be common properties for "genre" in both database
 class Genre(db.Model):
+	__tablename__ = 'Genre'
 	id = db.Column(db.Integer, primary_key = True)
 	name = db.Column(db.String)
 
-## M2M relations for Show - Venue and Show - Artist
-shows_venues = db.Table('show_venues',
-						db.Column('show_id', db.Integer, db.ForeignKey('Show.id'), primary_key=True),
-						db.Column('venue_id', db.Integer, db.ForeignKey('Venue.id'), primary_key=True)
-						)
-
-shows_artists = db.Table('show_artists',
-						db.Column('show_id', db.Integer, db.ForeignKey('Show.id'), primary_key=True),
-						db.Column('artist_id', db.Integer, db.ForeignKey('Artist.id'), primary_key=True)
-						)
+	def __repr__(self):
+		return f'<id={self.id} name={self.name}>'
 
 # Add Show model
 class Show(db.Model):
-	__table_name = 'Show'
+	__tablename__ = 'Show'
 	id = db.Column(db.Integer, primary_key=True)
 	start_time = db.Column(db.DateTime, nullable = False, default = datetime.now)
 	venue_id = db.relationship('Venue', secondary=shows_venues, backref=db.backref('venues'), lazy = True)
 	artist_id = db.relationship('Artist', secondary=shows_artists, backref=db.backref('artists'), lazy = True)
 	
+	def __repr__(self):
+		return f'<Show id={self.id} artist_id={self.artist_id} venue_id={self.venue_id} start_time={self.start_time}>'
 
 # TODO Implement Show and Artist models, and complete all model relationships and properties, as a database migration.
 
