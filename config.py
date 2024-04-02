@@ -21,3 +21,4 @@ else:
 
 ##  Track Modifications
 SQLALCHEMY_TRACK_MODIFICATIONS = False
+WTF_CSRF_ENABLED = True
