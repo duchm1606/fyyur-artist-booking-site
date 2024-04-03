@@ -13,6 +13,7 @@ from flask_migrate import Migrate
 import logging
 from logging import Formatter, FileHandler
 from forms import *
+from datetime import datetime
 #----------------------------------------------------------------------------#
 # App Config.
 #----------------------------------------------------------------------------#
@@ -27,7 +28,7 @@ migrate = Migrate(app, db)
 
 #----#
 # Setup relationship between models 
-# - We must make creation for artist, shows, and venues via form, so use M2M relationship between Show and Artist to increase storing performance
+# - We must make creation for artist, shows, and venues via form, so use two O2M relationship between Show and Artist to increase storing performance
 # - Venues -(n)-> Show -(n)-> Artist 
 #----#
 
@@ -171,16 +172,17 @@ def search_venues():
 
         # Make list result
         for venue_item in search_result_list:
+            upcomming_show = Show.query.join(Venue).filter(Venue.name == venue_item.name, Show.start_time > datetime.now()).count()
             data.append({
                 "id": venue_item.id,
-                "name": venue_item.name
+                "name": venue_item.name,
+                "num_upcoming_shows": upcomming_show
             })
-        
+            
         # Generate the response (without num_upcomming_show)
         response = {
             "count": len(data),
             "data": data
-            # TODO: add num_upcomming_show
         }
 
         return render_template('pages/search_venues.html', results=response, search_term=request.form.get('search_term', ''))
@@ -366,14 +368,14 @@ def search_artists():
 
         # Make result
         for artist in search_result_list:
+            upcomming_show = Show.query.join(Artist).filter(Artist.name == artist.name, Show.start_time > datetime.now()).count()
             data.append({
                 "id": artist.id,
-                "name": artist.name
-                # TODO: Add num_upcomming_shows
-                # Add num_upcoming_shows later
+                "name": artist.name,
+                "num_upcoming_shows": upcomming_show
             })
         
-        # Generate the response (without num_upcomming_show)
+        # Generate the response
         response = {
             "count": len(data),
             "data": data
