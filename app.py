@@ -123,43 +123,108 @@ def index():
 def venues():
     # TODO: replace with real venues data.
     #       num_upcoming_shows should be aggregated based on number of upcoming shows per venue.
-    data=[{
-        "city": "San Francisco",
-        "state": "CA",
-        "venues": [{
-            "id": 1,
-            "name": "The Musical Hop",
-            "num_upcoming_shows": 0,
-        }, {
-            "id": 3,
-            "name": "Park Square Live Music & Coffee",
-            "num_upcoming_shows": 1,
-        }]
-    }, {
-        "city": "New York",
-        "state": "NY",
-        "venues": [{
-            "id": 2,
-            "name": "The Dueling Pianos Bar",
-            "num_upcoming_shows": 0,
-        }]
-    }]
-    return render_template('pages/venues.html', areas=data);
+    data = []
+    # Use two loop to get all the case available
+    try:
+        # Return a tuple
+        cities_list = Venue.query.with_entities(Venue.city).distinct().all()
+        states_list = Venue.query.with_entities(Venue.state).distinct().all()
+
+        print(len(cities_list))
+        print(len(states_list))
+
+        # Retrieving all values as a flat list
+        cities = [value for (value,) in cities_list]
+        states = [value for (value,) in states_list]
+
+        # Buffer to get all values 
+        for city in cities:
+            # make empty venues_data
+            for state in states:
+                venuesList = Venue.query.filter_by(city = city, state = state).all()
+                print(f'city: {city}, state: {state}, count: {len(venuesList)}')
+                if (len(venuesList) > 0):
+                    # Prepare data for venues
+                    venues_data = []
+                    for venue_item in venuesList:
+                        venues_data.append({
+                            "id": venue_item.id,
+                            "name": venue_item.name
+                            # TODO: Bonus num_upcoming_shows
+                        })
+                    data.append({
+                        "city": city,
+                        "state": state,
+                        "venues": venues_data
+                    })
+        print(f'Data get: {data}')
+            
+
+        # data=[{
+        #     "city": "San Francisco",
+        #     "state": "CA",
+        #     "venues": [{
+        #         "id": 1,
+        #         "name": "The Musical Hop",
+        #         "num_upcoming_shows": 0,
+        #     }, {
+        #         "id": 3,
+        #         "name": "Park Square Live Music & Coffee",
+        #         "num_upcoming_shows": 1,
+        #     }]
+        # }, {
+        #     "city": "New York",
+        #     "state": "NY",
+        #     "venues": [{
+        #         "id": 2,
+        #         "name": "The Dueling Pianos Bar",
+        #         "num_upcoming_shows": 0,
+        #     }]
+        # }]
+        return render_template('pages/venues.html', areas=data)
+    except:
+        flash('An error occurred. Cannot display venues')
+        return redirect(url_for('index'))
+
 
 @app.route('/venues/search', methods=['POST'])
 def search_venues():
     # TODO: implement search on artists with partial string search. Ensure it is case-insensitive.
     # seach for Hop should return "The Musical Hop".
     # search for "Music" should return "The Musical Hop" and "Park Square Live Music & Coffee"
-    response={
-        "count": 1,
-        "data": [{
-            "id": 2,
-            "name": "The Dueling Pianos Bar",
-            "num_upcoming_shows": 0,
-        }]
-    }
-    return render_template('pages/search_venues.html', results=response, search_term=request.form.get('search_term', ''))
+    search_item = request.form.get('search_term')
+    search_item_pattern = f'%{search_item}%'
+    print(f'Get value from search:{search_item}')
+    # Find item
+    data = []
+    try:
+        search_result_list = Venue.query.filter(Venue.name.ilike(search_item_pattern)).all()
+        print(f'Get given list: {search_result_list}')
+
+        # Make list result
+        for venue_item in search_result_list:
+            data.append({
+                "id": venue_item.id,
+                "name": venue_item.name
+            })
+        
+        # Generate the response (without num_upcomming_show)
+        response = {
+            "count": len(data),
+            "data": data
+        }
+        # response={
+        #     "count": 1,
+        #     "data": [{
+        #         "id": 2,
+        #         "name": "The Dueling Pianos Bar",
+        #         "num_upcoming_shows": 0,
+        #     }]
+        # }
+        return render_template('pages/search_venues.html', results=response, search_term=request.form.get('search_term', ''))
+    except:
+        flash('An error occured while searching')
+        return redirect(url_for('venues'))
 
 @app.route('/venues/<int:venue_id>')
 def show_venue(venue_id):
