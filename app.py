@@ -28,7 +28,7 @@ migrate = Migrate(app, db)
 
 #----#
 # Setup relationship between models 
-# - We must make creation for artist, shows, and venues via form, so use two O2M relationship between Show and Artist to increase storing performance
+# - We must make creation for artist, shows, and venues via form, so use two O2M relationship between Show and Artist to increase querying performance
 # - Venues -(n)-> Show -(n)-> Artist 
 #----#
 
@@ -142,10 +142,11 @@ def venues():
                     # Prepare data for venues
                     venues_data = []
                     for venue_item in venuesList:
+                        upcomming_show = Show.query.join(Venue).filter(Venue.name == venue_item.name, Show.start_time > datetime.now()).count()
                         venues_data.append({
                             "id": venue_item.id,
-                            "name": venue_item.name
-                            # TODO: Bonus num_upcoming_shows
+                            "name": venue_item.name,
+                            "num_upcoming_shows": upcomming_show
                         })
                     data.append({
                         "city": city,
@@ -179,7 +180,7 @@ def search_venues():
                 "num_upcoming_shows": upcomming_show
             })
             
-        # Generate the response (without num_upcomming_show)
+        # Generate the response 
         response = {
             "count": len(data),
             "data": data
@@ -271,7 +272,45 @@ def show_venue(venue_id):
         "past_shows_count": 1,
         "upcoming_shows_count": 1,
     }
-    data = list(filter(lambda d: d['id'] == venue_id, [data1, data2, data3]))[0]
+    # upcomming_show = Show.query.join(Venue).filter(Venue.name == venue_item.name, Show.start_time > datetime.now()).count()
+    venue_lists_data = []
+    venues = Venue.query.all()
+    for venue in venues:
+        # Prepare data for each venue
+        venue_data = {}
+        # Find all show that have this venue
+        upcoming_shows = []
+        past_shows = []
+        shows_list = Show.query.join(Venue).filter(Venue.name == venue.name)
+        for show in shows_list:
+            show_start_time = show.start_time
+            show_data = {
+                "artist_id": show.artist_id,
+                "artist_name": show.artist.name,
+                "artist_image_link": show.artist.image_link,
+                "start_time": show_start_time.strftime("%Y-%m-%dT%H:%M:%SZ")       
+            }
+            if (show_start_time > datetime.now()):
+                upcoming_shows.append(show_data)
+            else:
+                past_shows.append(show_data)
+        # Prepare the response message
+        venue_data["id"] = venue.id
+        venue_data["name"] = venue.name
+        venue_data["city"] = venue.city
+        venue_data["phone"] = venue.phone
+        venue_data["website"] = venue.website
+        venue_data["seeking_talent"] = venue.seeking_talent
+        venue_data["image_link"] = venue.image_link
+        venue_data["past_shows"] = past_shows
+        venue_data["upcomming_shows"] = upcoming_shows
+        venue_data["past_shows_count"] = len(past_shows)
+        venue_data["upcoming_shows_count"] = len(upcoming_shows)
+        if (venue.seeking_talent == True):
+            venue_data["seeking_description"] = venue.seeking_description
+        venue_data["genres"] = venue.genres.strip("{}").split(",")
+        venue_lists_data.append(venue_data)
+    data = list(filter(lambda d: d['id'] == venue_id, venue_lists_data))[0]
     return render_template('pages/show_venue.html', venue=data)
 
 #  Create Venue
