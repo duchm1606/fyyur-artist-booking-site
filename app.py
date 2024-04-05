@@ -15,7 +15,7 @@ import logging
 from logging import Formatter, FileHandler
 from forms import *
 from datetime import datetime
-from models import Venue, Artist, Show
+from models import Venue, Artist, Show, db
 #----------------------------------------------------------------------------#
 # App Config.
 #----------------------------------------------------------------------------#
@@ -23,7 +23,7 @@ from models import Venue, Artist, Show
 app = Flask(__name__)
 moment = Moment(app)
 app.config.from_object('config')
-db = SQLAlchemy(app)
+db.init_app(app)
 migrate = Migrate(app, db)
 
 #----#
@@ -317,9 +317,9 @@ def show_artist(artist_id):
             for show in shows_list:
                 show_start_time = show.start_time
                 show_data = {
-                    "artist_id": show.artist_id,
-                    "artist_name": show.artist.name,
-                    "artist_image_link": show.artist.image_link,
+                    "venue_id": show.venue.id,
+                    "venue_name": show.venue.name,
+                    "venue_image_link": show.venue.image_link,
                     "start_time": show_start_time.strftime("%Y-%m-%dT%H:%M:%SZ")       
                 }
                 if (show_start_time > datetime.now()):
